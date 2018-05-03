@@ -4,7 +4,6 @@ from tkinter import ttk as tk
 import time
 import logging
 import threading
-from threading import Lock
 
 import navpacket as nav
 import controller as cnt
@@ -58,9 +57,9 @@ class App:
 
         # === Live data ===
         # Refresh options for live data labels
-        self.navPacketRefreshPeriod = 0.5
+        self.navPacketRefreshPeriod = 0.3
         self.last_navRefresh = time.time()
-        self.serialOutputRefreshPeriod = 0.5
+        self.serialOutputRefreshPeriod = 0.3
         self.last_navRefresh = time.time()
 
         # Live data frame.
@@ -90,9 +89,15 @@ class App:
         maxButtonColumns = 3
         counter = 0
         for name, value in cnt.ControllerStates:
+            # Tiles the buttons from left to right, up to down
             rowToPlace = buttonRow + counter//maxButtonColumns
             colToPlace = counter % maxButtonColumns
-            button = tk.Button(self.mainframe, text=name, state="normal")
+            button = tk.Button(self.mainframe,
+                               text=name,
+                               state="normal",
+                               command=lambda v=value: self.controller.write(v)
+                               )
+
             button.grid(row=rowToPlace, column=colToPlace)
             self.controlButtons.append(button)
             counter += 1
@@ -160,11 +165,12 @@ class App:
             self.controller.handleNavpackets(navPacket)
 
     def handleSerialOutputControl(self, output):
-        # Notify controller
-        print(output)
+        # Update UI
+        # Code to update UI will go here
 
-        if not self.isClosing and self.isAutomatic.get():
-            controller.handleSerialOutputControl()
+        # Notify controller
+        if self.isAutomatic.get():
+            controller.handleSerialOutput()
 
 
 if __name__ == "__main__":

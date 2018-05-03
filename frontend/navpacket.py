@@ -20,6 +20,7 @@ FMT_STRING = ">diiffffffdddffffff"
 HOST = "localhost"
 PORT = 5124
 TIMEOUT_SECONDS = 2
+N_POINT_FILTER = 1  # Only send every nth point
 
 
 # INS_Modes
@@ -115,6 +116,7 @@ def UDP_Listener(callback, UDP_ListenerEvent):
 
             if navpacket is not None:
                 callback(navpacket)
+
         except socket.timeout:
             pass
 
