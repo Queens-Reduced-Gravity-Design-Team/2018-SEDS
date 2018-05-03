@@ -25,14 +25,14 @@ def getSimulatedPacket(time, zData):
     Angular_Rate_X = 250.2
     Angular_Rate_Y = -240.2
     Angular_Rate_Z = 232.
-    Latitude = 192.1
-    Longitude = 123.1
+    Latitude = -32
+    Longitude = 10
     Altitude = 112.1
     Velocity_North = 32.1
     Velocity_East = 12.1
     Velocity_Down = 123.2
-    Acceleration_X = 123.
-    Acceleration_Y = 213.1
+    Acceleration_X = 0
+    Acceleration_Y = 10
     Acceleration_Z = zData
 
     binary = struct \

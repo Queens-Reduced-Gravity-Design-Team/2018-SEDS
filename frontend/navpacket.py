@@ -56,7 +56,37 @@ def unpackNavPacket(data):
         "Acceleration_X " +
         "Acceleration_Y " +
         "Acceleration_Z ")
-    return NavPacket._make(struct.unpack(FMT_STRING, data))
+
+    try:
+        navPacket = NavPacket._make(struct.unpack(FMT_STRING, data))
+
+        # Check that all data points are valid
+        assert 0 <= navPacket.GPS_Time <= 604800
+        assert IMU_FAIL <= navPacket.INS_Mode <= INS_GOOD
+        assert -1 <= navPacket.GPS_Mode <= 99
+        assert -180 <= navPacket.Roll <= 180
+        assert -90 <= navPacket.Pitch <= 90
+        assert 0 <= navPacket.True_Heading <= 360
+        assert -500 <= navPacket.Angular_Rate_X <= 500
+        assert -500 <= navPacket.Angular_Rate_Y <= 500
+        assert -500 <= navPacket.Angular_Rate_Z <= 500
+        assert -90 <= navPacket.Latitude <= 90
+        assert -180 <= navPacket.Longitude <= 180
+        assert 0 <= navPacket.Altitude <= 18000
+        assert -515 <= navPacket.Velocity_North <= 515
+        assert -515 <= navPacket.Velocity_East <= 515
+        assert -515 <= navPacket.Velocity_Down <= 515
+        assert -98 <= navPacket.Acceleration_X <= 98
+        assert -98 <= navPacket.Acceleration_Y <= 98
+        assert -98 <= navPacket.Acceleration_Z <= 98
+
+        return navPacket
+    except AssertionError as e:
+        logging.exception(e)
+        return None
+    except struct.error as e:
+        logging.exception(e)
+        return None
 
 
 def UDP_Listener(uiCallback, controllerCallback, UDP_ListenerEvent):
@@ -89,11 +119,12 @@ def UDP_Listener(uiCallback, controllerCallback, UDP_ListenerEvent):
             data, address = sock.recvfrom(bytesToRead)
             navpacket = unpackNavPacket(data)
 
-            if time.time() - lastMeasured_time >= updatePeriod:
-                uiCallback(navpacket)
-                lastMeasured_time = time.time()
+            if navpacket is not None:
+                if time.time() - lastMeasured_time >= updatePeriod:
+                    uiCallback(navpacket)
+                    lastMeasured_time = time.time()
 
-            controllerCallback(navpacket)
+                controllerCallback(navpacket)
         except socket.timeout:
             continue
 
