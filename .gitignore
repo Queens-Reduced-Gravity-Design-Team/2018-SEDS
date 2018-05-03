@@ -1,0 +1,15 @@
+# C++ Specific files
+*.class
+*.out
+*.o
+
+# Python specfic fules
+*.pyc
+__pycache__/
+
+# IDE/Editor specific files
+.vscode/**
+*.swp
+
+# MacOS specific files
+.DS_Store
