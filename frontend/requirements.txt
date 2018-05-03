@@ -1,2 +1,2 @@
 pyserial==3.4.0
-mttkinter-0.6.1
+mttkinter==0.6.1

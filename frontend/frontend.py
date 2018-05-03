@@ -1,20 +1,21 @@
-import mttkinter.mtTkinter as tkinter
+import tkinter
 from tkinter import ttk as tk
 
-import serial
-from serial.tools import list_ports
-
+import time
 import logging
 import threading
-import sys
+from threading import Lock
 
-import navpacket
+import navpacket as nav
+import controller as cnt
 
 
 class App:
-    def __init__(self, master, UDP_ListenerEvent):
+    def __init__(
+            self, master, UDP_ListenerEvent, Serial_ListenerEvent, controller):
         self.master = master
         master.title("Control Panel")
+        self.controller = controller
 
         self.mainframe = tk.Frame(self.master, padding=(6, 6, 12, 12))
         self.mainframe.grid(sticky='nwse')
@@ -22,6 +23,9 @@ class App:
         # Thread syncronization objects
         self.UDP_ListenerEvent = UDP_ListenerEvent
         self.UDP_ListenerEvent.set()
+
+        self.Serial_ListenerEvent = Serial_ListenerEvent
+        self.Serial_ListenerEvent.set()
 
         # Title
         self.title = tk.Label(self.mainframe,
@@ -35,7 +39,6 @@ class App:
 
         # Serial port dropdown
         self.availablePorts = []
-        self.currentPort = None
         self.serialPortVar = tkinter.StringVar()
         self.serialPortVar.set(None)
         self.portSelector = \
@@ -52,6 +55,14 @@ class App:
             state=tkinter.NORMAL, onvalue=True, offvalue=False)
         self.checkButton.grid(row=2, column=0)
 
+        # === Live data ===
+        # Refresh options for live data labels
+        self.navPacketRefreshPeriod = 0.5
+        self.last_navRefresh = time.time()
+        self.serialOutputRefreshPeriod = 0.5
+        self.last_navRefresh = time.time()
+
+        # Live data frame.
         self.liveData = tk.Labelframe(self.mainframe, text="Live Data")
         self.liveData.grid(row=3, columnspan=3)
 
@@ -72,75 +83,61 @@ class App:
         self.zAcceleration.grid(
                 in_=self.liveData, row=5, columnspan=3, sticky='w')
 
-        # Determine cleanup protocol
-        master.protocol("WM_DELETE_WINDOW", self.close)
-
-    def getAvailablePorts(self):
-        """
-        Returns a list of available serial devices
-        """
-        ports = [port.device for port in list_ports.comports()]
-        ports.append(None)
-
-        return ports
-
     def refreshPorts(self, event):
         """
         Refreshes list of serial devices in dropdown
         """
         logging.debug("Refreshing ports.")
-        self.availablePorts = self.getAvailablePorts()
+        self.availablePorts = self.controller.getAvailablePorts()
 
         # Delete old dropdown options
         self.portSelector["menu"].delete(0, "end")
         for value in self.availablePorts:
 
             def _callback(value=value):
-                self.updatePort(value)
+                self.controller.updatePort(value)
+                self.serialPortVar.set(value)
 
             self.portSelector["menu"] \
                 .add_command(label=value,
                              command=_callback)
-
         return
-
-    def updatePort(self, value):
-        """
-        Update serial port to communicate with
-        """
-        currentPort = self.currentPort
-        if currentPort is not None:
-            logging.debug("Closing serial port {}".format(currentPort.name))
-            currentPort.close()
-
-        if value is not None:
-            logging.debug("Opening new port {}".format(value))
-            currentPort = serial.Serial(value)
-
-        self.currentPort = currentPort
-        self.serialPortVar.set(value)
 
     def close(self):
         """
         Cleans up, and then closes the application.
         """
-        currentPort = self.currentPort
-        if currentPort is not None:
-            logging.debug("Closing serial port: {}".format(currentPort.name))
-            currentPort.close()
+        logging.info("Closing controller")
+        self.controller.close()
 
+        # Send close event to UDP thread
         logging.info("Set event to close UDP_Listener")
         self.UDP_ListenerEvent.clear()
 
-        self.master.destroy()
+        # Send close event to serial thread
+        logging.info("Set event to close Serial_Listener")
+        self.Serial_ListenerEvent.clear()
 
-    def handleNavpacketsUI(self, navPacket):
-        self.millisVar.set("t: {:.2f}s".format(navPacket.GPS_Time))
-        self.zAccelerationVar.set(
-                "az: {:.2f}m/s^2".format(navPacket.Acceleration_Z))
+        self.master.after(0, self.master.destroy)
 
-    def handleNavpacketsControl(self, navPacket):
-        return
+    def handleNavpackets(self, navPacket):
+        # Update UI
+        currentTime = time.time()
+        timediff = currentTime - self.last_navRefresh
+        if timediff > self.serialOutputRefreshPeriod:
+            self.millisVar.set("t: {:.2f}s".format(navPacket.GPS_Time))
+            self.zAccelerationVar.set(
+                    "az: {:.2f}m/s^2".format(navPacket.Acceleration_Z))
+            self.last_navRefresh = currentTime
+
+        # Notify controller
+        if self.isAutomatic.get():
+            self.controller.handleNavpackets(navPacket)
+
+    def handleSerialOutputControl(self, output):
+        # Notify controller
+        if not self.isClosing and self.isAutomatic.get():
+            controller.handleSerialOutputControl()
 
 
 if __name__ == "__main__":
@@ -149,20 +146,33 @@ if __name__ == "__main__":
 
     # Define thread events
     UDP_ListenerEvent = threading.Event()
+    Serial_ListenerEvent = threading.Event()
+
+    # Define controller object
+    controller = cnt.Controller()
 
     # Set up UI
     root = tkinter.Tk()
     root.resizable(width=False, height=False)
-    app = App(root, UDP_ListenerEvent)
+    app = App(root, UDP_ListenerEvent, Serial_ListenerEvent, controller)
 
     # Create thread for UDP listener
     t1 = threading.Thread(name="UDPThread",
-                          target=navpacket.UDP_Listener,
-                          args=(app.handleNavpacketsUI,
-                                app.handleNavpacketsControl,
+                          target=nav.UDP_Listener,
+                          args=(app.handleNavpackets,
                                 UDP_ListenerEvent))
+
+    # Create thread for Serial listener
+    t2 = threading.Thread(name="SerialThread",
+                          target=controller.listen,
+                          args=(app.handleSerialOutputControl,
+                                Serial_ListenerEvent))
+
+    root.protocol("WM_DELETE_WINDOW", app.close)
+
     try:
         t1.start()
+        t2.start()
         root.mainloop()
     except KeyboardInterrupt:
         app.close()

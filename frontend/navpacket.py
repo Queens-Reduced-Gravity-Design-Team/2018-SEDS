@@ -19,7 +19,7 @@ FMT_STRING = ">diiffffffdddffffff"
 # Port to where expected data will arrive from
 HOST = "localhost"
 PORT = 5124
-TIMEOUT_SECONDS = 3
+TIMEOUT_SECONDS = 2
 
 
 # INS_Modes
@@ -89,26 +89,20 @@ def unpackNavPacket(data):
         return None
 
 
-def UDP_Listener(uiCallback, controllerCallback, UDP_ListenerEvent):
+def UDP_Listener(callback, UDP_ListenerEvent):
     """
     Listens to UDP data and prints the corresponding NavPacket
     This code is blocking, so it should be run on a separate thread.
 
     One can assume that passing the navpacket and calling the callback
     will run add to some Event Queue, and therefore run very quickly.
-
-    UDP_ListenerEvent is an event that determines whether to keep
-    listening to the UDP ports. It controller by a separate thread.
     """
     logging.info("Begin listening to UDP threads")
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     sock.bind((HOST, PORT))
-    sock.settimeout(TIMEOUT_SECONDS)  # Time out sockets after 5 seconds
+    sock.settimeout(TIMEOUT_SECONDS)  # Time out sockets after some time
     bytesToRead = struct.calcsize(FMT_STRING)
-
-    updatePeriod = 0.3  # seconds
-    lastMeasured_time = time.time()
 
     while UDP_ListenerEvent.is_set():
         # Since sock.recvfrom is blocking by default, the thread running
@@ -120,12 +114,9 @@ def UDP_Listener(uiCallback, controllerCallback, UDP_ListenerEvent):
             navpacket = unpackNavPacket(data)
 
             if navpacket is not None:
-                if time.time() - lastMeasured_time >= updatePeriod:
-                    uiCallback(navpacket)
-                    lastMeasured_time = time.time()
-
-                controllerCallback(navpacket)
+                callback(navpacket)
         except socket.timeout:
-            continue
+            pass
 
     logging.info("Recieved UDP_Listener close event.")
+    UDP_ListenerEvent.set()
