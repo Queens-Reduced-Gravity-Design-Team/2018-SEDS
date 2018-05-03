@@ -9,9 +9,13 @@ import navpacket
 
 
 class App:
-    def __init__(self, master):
+    def __init__(self, master, UDP_ListenerEvent):
         self.master = master
         master.title("Control Panel")
+
+        # Thread syncronization objects
+        self.UDP_ListenerEvent = UDP_ListenerEvent
+        self.UDP_ListenerEvent.set()
 
         # Title
         self.label = tk.Label(master, text="Ugly Controller V1.0")
@@ -69,7 +73,7 @@ class App:
         """
         Refreshes list of serial devices in dropdown
         """
-        logging.debug("UI:Refreshing ports.")
+        logging.debug("Refreshing ports.")
         availablePorts = self.getAvailablePorts()
 
         # Delete old dropdown options
@@ -87,10 +91,10 @@ class App:
         """
         currentPort = self.currentPort
         if currentPort is not None:
-            logging.debug("UI:Closing serial port {}".format(currentPort.name))
+            logging.debug("Closing serial port {}".format(currentPort.name))
             currentPort.close()
 
-        logging.debug("UI:Opening new port {}".format(value))
+        logging.debug("Opening new port {}".format(value))
         currentPort = serial.Serial(value)
         self.currentPort = currentPort
         self.serialPortVar.set(value)
@@ -100,10 +104,13 @@ class App:
         Cleans up, and then closes the application.
         """
         currentPort = self.currentPort
-        logging.info("UI:Closing connection")
+        logging.info("Closing connection")
         if currentPort is not None:
-            logging.debug("UI:Closing serial port {}".format(currentPort.name))
+            logging.debug("Closing serial port {}".format(currentPort.name))
             currentPort.close()
+
+        logging.info("Set event to close UDP_Listener")
+        self.UDP_ListenerEvent.clear()
 
         self.master.destroy()
 
@@ -116,16 +123,20 @@ class App:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    FMT = "%(levelname)s:%(threadName)s: %(message)s < %(module)s:%(lineno)s"
+    logging.basicConfig(level=logging.DEBUG, format=FMT)
 
     # Create thread for UDP listener
 
     root = tk.Tk()
-    app = App(root)
-    t1 = threading.Thread(name="T - UDP_Listener",
+
+    UDP_ListenerEvent = threading.Event()
+    app = App(root, UDP_ListenerEvent)
+    t1 = threading.Thread(name="UDPThread",
                           target=navpacket.UDP_Listener,
                           args=(app.handleNavpacketsUI,
-                                app.handleNavpacketsControl))
+                                app.handleNavpacketsControl,
+                                UDP_ListenerEvent))
     t1.start()
     root.mainloop()
     sys.exit()

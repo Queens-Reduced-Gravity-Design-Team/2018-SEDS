@@ -19,6 +19,7 @@ FMT_STRING = ">diiffffffdddffffff"
 # Port to where expected data will arrive from
 HOST = "localhost"
 PORT = 5124
+TIMEOUT_SECONDS = 3
 
 
 # INS_Modes
@@ -58,29 +59,42 @@ def unpackNavPacket(data):
     return NavPacket._make(struct.unpack(FMT_STRING, data))
 
 
-def UDP_Listener(uiCallback, controllerCallback):
+def UDP_Listener(uiCallback, controllerCallback, UDP_ListenerEvent):
     """
     Listens to UDP data and prints the corresponding NavPacket
     This code is blocking, so it should be run on a separate thread.
 
     One can assume that passing the navpacket and calling the callback
     will run add to some Event Queue, and therefore run very quickly.
+
+    UDP_ListenerEvent is an event that determines whether to keep
+    listening to the UDP ports. It controller by a separate thread.
     """
-    logging.info("Navpacket:Begin listening to UDP threads")
+    logging.info("Begin listening to UDP threads")
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
     sock.bind((HOST, PORT))
+    sock.settimeout(TIMEOUT_SECONDS)  # Time out sockets after 5 seconds
     bytesToRead = struct.calcsize(FMT_STRING)
 
     updatePeriod = 0.3  # seconds
     lastMeasured_time = time.time()
 
-    while True:
-        # This part of the code is blocking. The call
-        data, address = sock.recvfrom(bytesToRead)
-        navpacket = unpackNavPacket(data)
+    while UDP_ListenerEvent.is_set():
+        # Since sock.recvfrom is blocking by default, the thread running
+        # this method may never terminate is the Event is cleared. Therefore
+        # this loop is periodically handles handles timeout exceptions, which
+        # are ignores in order to possible end the method.
+        try:
+            data, address = sock.recvfrom(bytesToRead)
+            navpacket = unpackNavPacket(data)
 
-        if time.time() - lastMeasured_time >= updatePeriod:
-            uiCallback(navpacket)
-            lastMeasured_time = time.time()
+            if time.time() - lastMeasured_time >= updatePeriod:
+                uiCallback(navpacket)
+                lastMeasured_time = time.time()
 
-        controllerCallback(navpacket)
+            controllerCallback(navpacket)
+        except socket.timeout:
+            continue
+
+    logging.info("Recieved UDP_Listener close event.")
