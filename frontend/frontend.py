@@ -28,14 +28,14 @@ class App:
         self.Serial_ListenerEvent.set()
 
         # Title
-        self.title = tk.Label(self.mainframe,
-                              text="Ugly Controller V1.0",
-                              font=("TkDefaultFont", 20))
-        self.title.grid(row=0, column=0, columnspan=2)
+        title = tk.Label(self.mainframe,
+                         text="Ugly Controller V1.0",
+                         font=("TkDefaultFont", 20))
+        title.grid(row=0, column=0, columnspan=2)
 
         # Serial port label
-        self.label = tk.Label(self.mainframe, text="Serial Port")
-        self.label.grid(row=1, column=0)
+        label = tk.Label(self.mainframe, text="Serial Port")
+        label.grid(row=1, column=0)
 
         # Serial port dropdown
         self.availablePorts = []
@@ -52,7 +52,8 @@ class App:
         self.isAutomatic.set(False)
         self.checkButton = tk.Checkbutton(
             self.mainframe, text="Automatic Mode", variable=self.isAutomatic,
-            state=tkinter.NORMAL, onvalue=True, offvalue=False)
+            state=tkinter.NORMAL, onvalue=True, offvalue=False,
+            command=self.toggleAutomatic)
         self.checkButton.grid(row=2, column=0)
 
         # === Live data ===
@@ -82,6 +83,30 @@ class App:
                                       font=('Courier', 13))
         self.zAcceleration.grid(
                 in_=self.liveData, row=5, columnspan=3, sticky='w')
+
+        # Control buttons
+        self.controlButtons = []
+        buttonRow = 6
+        maxButtonColumns = 3
+        counter = 0
+        for name, value in cnt.ControllerStates:
+            rowToPlace = buttonRow + counter//maxButtonColumns
+            colToPlace = counter % maxButtonColumns
+            button = tk.Button(self.mainframe, text=name, state="normal")
+            button.grid(row=rowToPlace, column=colToPlace)
+            self.controlButtons.append(button)
+            counter += 1
+
+    def toggleAutomatic(self):
+        if self.isAutomatic.get():
+            logging.debug("Enable automatic mode")
+            newState = "disabled"
+        else:
+            logging.debug("Disable automatic mode")
+            newState = "normal"
+
+        for button in self.controlButtons:
+            button.config(state=newState)
 
     def refreshPorts(self, event):
         """
@@ -136,6 +161,8 @@ class App:
 
     def handleSerialOutputControl(self, output):
         # Notify controller
+        print(output)
+
         if not self.isClosing and self.isAutomatic.get():
             controller.handleSerialOutputControl()
 

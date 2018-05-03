@@ -4,11 +4,12 @@ from serial.tools import list_ports
 from threading import Lock
 
 
-class ControllerStates:
-    DO_NOTHING = 0
-    EMERGENCY_STOP = 1
-    TEST_LED_ON = 2
-    TEST_LED_OFF = 3
+ControllerStates = [
+    ("Do Nothing",     0),
+    ("Emergency Stop", 1),
+    ("Test LED ON",    2),
+    ("Test LED OFF",   3)
+]
 
 
 class Controller:
@@ -29,31 +30,25 @@ class Controller:
         return ports
 
     def close(self):
-        self.IOLock.acquire()
-
         currentPort = self.currentPort
         if currentPort is not None:
             logging.debug("Closing serial port: {}".format(currentPort.name))
             currentPort.close()
             currentPort = None
 
-        self.IOLock.release()
-
     def updatePort(self, newPort):
         """
         Updates or opens a new serial connection.
         """
         self.IOLock.acquire()
-
         if self.currentPort is not None:
             logging.debug(
                     "Closing serial port {}".format(self.currentPort.name))
             self.currentPort.close()
 
         if newPort is not None:
-            logging.debug("Opening new port {}".format(newPort))
             self.currentPort = serial.Serial(newPort)
-
+            logging.debug("Opened new port {}".format(newPort))
         self.IOLock.release()
 
     def listen(self, callback, Serial_ListenerEvent):
