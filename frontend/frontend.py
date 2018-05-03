@@ -3,6 +3,7 @@ from serial.tools import list_ports
 import mttkinter.mtTkinter as tk
 import logging
 import threading
+import sys
 
 import navpacket
 
@@ -40,14 +41,17 @@ class App:
         # Label for milliseconds
         self.millisVar = tk.StringVar()
         self.millisVar.set(0)
-        self.millis = tk.Label(self.master, textvariable=self.millisVar)
+        self.millis = tk.Label(self.master,
+                               textvariable=self.millisVar,
+                               font=('Courier', 15))
         self.millis.grid(row=3, column=0)
 
         # Label for z acceleration
         self.zAccelerationVar = tk.StringVar()
         self.zAccelerationVar.set(0)
-        self.zAcceleration = tk.Label(
-                self.master, textvariable=self.zAccelerationVar)
+        self.zAcceleration = tk.Label(self.master,
+                                      textvariable=self.zAccelerationVar,
+                                      font=('Courier', 15))
         self.zAcceleration.grid(row=3, column=1)
 
         # Determine cleanup protocol
@@ -124,3 +128,4 @@ if __name__ == "__main__":
                                 app.handleNavpacketsControl))
     t1.start()
     root.mainloop()
+    sys.exit()
