@@ -6,6 +6,7 @@
 # Python specfic fules
 *.pyc
 __pycache__/
+.mypy_cache/
 
 # IDE/Editor specific files
 .vscode/**
