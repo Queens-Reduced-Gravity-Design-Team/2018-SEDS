@@ -1,35 +1,30 @@
 import serial
 from serial.tools import list_ports
-import tkinter as tk
-from tkinter import Label, Button, Tk, OptionMenu
+import mttkinter.mtTkinter as tk
 import logging
+import threading
 
-
-class AppState:
-    def __init__(self):
-        self.currentPort = None
+import navpacket
 
 
 class App:
     def __init__(self, master):
-        # State of the current UI
-        self.state = AppState()
-
         self.master = master
         master.title("Control Panel")
 
-        self.label = Label(master, text="Ugly Controller V1.0")
-        self.label.grid(row=0, column=1)
+        # Title
+        self.label = tk.Label(master, text="Ugly Controller V1.0")
 
         # Serial port label
-        self.label = Label(master, text="Serial Port")
+        self.label = tk.Label(master, text="Serial Port")
         self.label.grid(row=1, column=0)
 
         # Serial port dropdown
+        self.currentPort = None
         self.serialPortVar = tk.StringVar()
         self.serialPortVar.set("")
         self.portSelector = \
-            OptionMenu(self.master, self.serialPortVar, "")
+            tk.OptionMenu(self.master, self.serialPortVar, "")
         self.portSelector.configure(width=18)
         self.portSelector.bind("<Button-1>", self.refreshPorts)
         self.portSelector.grid(row=1, column=1)
@@ -40,7 +35,20 @@ class App:
         self.checkButton = tk.Checkbutton(
             master, text="Automatic Mode", variable=self.isAutomatic,
             state=tk.NORMAL, onvalue=True, offvalue=False)
-        self.checkButton.grid(row=1, column=3)
+        self.checkButton.grid(row=2, column=0)
+
+        # Label for milliseconds
+        self.millisVar = tk.StringVar()
+        self.millisVar.set(0)
+        self.millis = tk.Label(self.master, textvariable=self.millisVar)
+        self.millis.grid(row=3, column=0)
+
+        # Label for z acceleration
+        self.zAccelerationVar = tk.StringVar()
+        self.zAccelerationVar.set(0)
+        self.zAcceleration = tk.Label(
+                self.master, textvariable=self.zAccelerationVar)
+        self.zAcceleration.grid(row=3, column=1)
 
         # Determine cleanup protocol
         master.protocol("WM_DELETE_WINDOW", self.close)
@@ -73,21 +81,21 @@ class App:
         """
         Update serial port to communicate with
         """
-        currentPort = self.state.currentPort
+        currentPort = self.currentPort
         if currentPort is not None:
             logging.debug("UI:Closing serial port {}".format(currentPort.name))
             currentPort.close()
 
         logging.debug("UI:Opening new port {}".format(value))
         currentPort = serial.Serial(value)
-        self.state.currentPort = currentPort
+        self.currentPort = currentPort
         self.serialPortVar.set(value)
 
     def close(self):
         """
         Cleans up, and then closes the application.
         """
-        currentPort = self.state.currentPort
+        currentPort = self.currentPort
         logging.info("UI:Closing connection")
         if currentPort is not None:
             logging.debug("UI:Closing serial port {}".format(currentPort.name))
@@ -95,10 +103,24 @@ class App:
 
         self.master.destroy()
 
+    def handleNavpacketsUI(self, navPacket):
+        self.millisVar.set("{:.2f}".format(navPacket.GPS_Time))
+        self.zAccelerationVar.set("{:.2f}".format(navPacket.Acceleration_Z))
+
+    def handleNavpacketsControl(self, navPacket):
+        return
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
-    root = Tk()
+    # Create thread for UDP listener
+
+    root = tk.Tk()
     app = App(root)
+    t1 = threading.Thread(name="T - UDP_Listener",
+                          target=navpacket.UDP_Listener,
+                          args=(app.handleNavpacketsUI,
+                                app.handleNavpacketsControl))
+    t1.start()
     root.mainloop()

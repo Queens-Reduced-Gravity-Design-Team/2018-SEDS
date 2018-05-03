@@ -6,7 +6,9 @@ Author: Viraj Bangari
 
 import struct
 from collections import namedtuple
+import logging
 import socket
+import time
 
 
 # This is the format string for the expected from the data.
@@ -56,17 +58,29 @@ def unpackNavPacket(data):
     return NavPacket._make(struct.unpack(FMT_STRING, data))
 
 
-if __name__ == "__main__":
+def UDP_Listener(uiCallback, controllerCallback):
     """
     Listens to UDP data and prints the corresponding NavPacket
     This code is blocking, so it should be run on a separate thread.
+
+    One can assume that passing the navpacket and calling the callback
+    will run add to some Event Queue, and therefore run very quickly.
     """
+    logging.info("Navpacket:Begin listening to UDP threads")
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((HOST, PORT))
     bytesToRead = struct.calcsize(FMT_STRING)
+
+    updatePeriod = 0.3  # seconds
+    lastMeasured_time = time.time()
+
     while True:
+        # This part of the code is blocking. The call
         data, address = sock.recvfrom(bytesToRead)
         navpacket = unpackNavPacket(data)
 
-        print(navpacket.GPS_Time)
-        print(navpacket.Acceleration_Z)
+        if time.time() - lastMeasured_time >= updatePeriod:
+            uiCallback(navpacket)
+            lastMeasured_time = time.time()
+
+        controllerCallback(navpacket)
