@@ -47,11 +47,16 @@ class App:
         self.portSelector.grid(row=1, column=1)
 
         # Selector for automatic mode
-        self.isAutomatic = tkinter.BooleanVar()
-        self.isAutomatic.set(False)
+        self.isAutomaticVar = tkinter.BooleanVar()
+        self.isAutomaticVar.set(False)
+        self.isAutomatic = self.isAutomaticVar.get()
         self.checkButton = tk.Checkbutton(
-            self.mainframe, text="Automatic Mode", variable=self.isAutomatic,
-            state=tkinter.NORMAL, onvalue=True, offvalue=False,
+            self.mainframe,
+            text="Automatic Mode",
+            variable=self.isAutomaticVar,
+            state=tkinter.ACTIVE,
+            onvalue=True,
+            offvalue=False,
             command=self.toggleAutomatic)
         self.checkButton.grid(row=2, column=0)
 
@@ -67,18 +72,14 @@ class App:
         self.liveData.grid(row=3, columnspan=3)
 
         # Label for milliseconds
-        self.millisVar = tkinter.StringVar()
-        self.millisVar.set(0)
         self.millis = tk.Label(self.liveData,
-                               textvariable=self.millisVar,
+                               text="0",
                                font=('Courier', 13))
         self.millis.grid(in_=self.liveData, row=4, columnspan=3, sticky='w')
 
         # Label for z acceleration
-        self.zAccelerationVar = tkinter.StringVar()
-        self.zAccelerationVar.set(0)
         self.zAcceleration = tk.Label(self.liveData,
-                                      textvariable=self.zAccelerationVar,
+                                      text="0",
                                       font=('Courier', 13))
         self.zAcceleration.grid(
                 in_=self.liveData, row=5, columnspan=3, sticky='w')
@@ -102,8 +103,11 @@ class App:
             self.controlButtons.append(button)
             counter += 1
 
+        self.startTime = time.time()
+
     def toggleAutomatic(self):
-        if self.isAutomatic.get():
+        self.isAutomatic = self.isAutomaticVar.get()
+        if self.isAutomatic:
             logging.debug("Enable automatic mode")
             newState = "disabled"
         else:
@@ -151,17 +155,25 @@ class App:
         self.master.after(0, self.master.destroy)
 
     def handleNavpackets(self, navPacket):
+        # td = time.time() - self.startTime
+        # if td > self.serialOutputRefreshPeriod/10:
+        #     logging.debug("Long delay {}".format(td))
+        # self.startTime = time.time()
+
         # Update UI
         currentTime = time.time()
         timediff = currentTime - self.last_navRefresh
         if timediff > self.serialOutputRefreshPeriod:
-            self.millisVar.set("t: {:.2f}s".format(navPacket.GPS_Time))
-            self.zAccelerationVar.set(
-                    "az: {:.2f}m/s^2".format(navPacket.Acceleration_Z))
+            self.millis["text"] = \
+                "t: {:.2f}s".format(navPacket.GPS_Time)
+
+            self.zAcceleration["text"] = \
+                "az: {:.2f}m/s^2".format(navPacket.Acceleration_Z)
+
             self.last_navRefresh = currentTime
 
         # Notify controller
-        if self.isAutomatic.get():
+        if self.isAutomatic:
             self.controller.handleNavpackets(navPacket)
 
     def handleSerialOutputControl(self, output):
@@ -169,8 +181,10 @@ class App:
         # Code to update UI will go here
 
         # Notify controller
-        if self.isAutomatic.get():
-            controller.handleSerialOutput()
+        if self.isAutomatic:
+            self.controller.handleSerialOutput(output)
+
+        return
 
 
 if __name__ == "__main__":

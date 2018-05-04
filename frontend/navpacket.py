@@ -19,7 +19,7 @@ FMT_STRING = ">diiffffffdddffffff"
 # Port to where expected data will arrive from
 HOST = "localhost"
 PORT = 5124
-TIMEOUT_SECONDS = 2
+TIMEOUT_SECONDS = 1
 N_POINT_FILTER = 1  # Only send every nth point
 
 

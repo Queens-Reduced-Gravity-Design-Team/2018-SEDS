@@ -23,7 +23,6 @@ class Controller:
     """
     def __init__(self):
         self.currentPort = None
-        self.IOLock = Lock()
 
     def getAvailablePorts(self):
         """
@@ -35,19 +34,16 @@ class Controller:
         return ports
 
     def close(self):
-        self.IOLock.acquire()
         currentPort = self.currentPort
         if currentPort is not None:
             logging.debug("Closing serial port: {}".format(currentPort.name))
             currentPort.close()
             currentPort = None
-        self.IOLock.release()
 
     def updatePort(self, newPort):
         """
         Updates or opens a new serial connection.
         """
-        self.IOLock.acquire()
         if self.currentPort is not None:
             logging.debug(
                     "Closing serial port {}".format(self.currentPort.name))
@@ -56,16 +52,13 @@ class Controller:
         if newPort is not None:
             self.currentPort = serial.Serial(newPort)
             logging.debug("Opened new port {}".format(newPort))
-        self.IOLock.release()
 
     def listen(self, callback, Serial_ListenerEvent):
         logging.info("Begin listening to Serial")
         while Serial_ListenerEvent.is_set():
-            self.IOLock.acquire()
             if self.currentPort is not None:
                 line = self.currentPort.readline()
                 callback(line)
-            self.IOLock.release()
 
         logging.info("Recieved Serial_ListenerEvent close event.")
         Serial_ListenerEvent.set()
@@ -89,11 +82,9 @@ class Controller:
         packedInteger = struct.pack("<i", value)
         logging.info("Sending bytes {}".format(packedInteger))
 
-        self.IOLock.acquire()
         port = self.currentPort
         if port is not None:
             port.write(packedInteger)
-        self.IOLock.release()
 
     def handleNavpackets(self, navPacket):
         """
@@ -106,4 +97,3 @@ class Controller:
         Handles serial output.
         """
         return
-
