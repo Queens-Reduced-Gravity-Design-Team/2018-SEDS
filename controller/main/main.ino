@@ -56,11 +56,7 @@ void sendMessageToFrontend()
 {
   // Since Serial.write sends one byte at a time if it's not a string,
   // the current state must be sent in 4 steps.
-  char * stateBuffer = (char *)(&currentState);
-  Serial.write(stateBuffer[0]);
-  Serial.write(stateBuffer[1]);
-  Serial.write(stateBuffer[2]);
-  Serial.write(stateBuffer[3]);
+  Serial.write((char*)&currentState, sizeof(State));
 
   
   // NOTE: The serial protocol requires that all communications between

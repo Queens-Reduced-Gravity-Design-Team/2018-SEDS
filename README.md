@@ -31,8 +31,8 @@ controller/ - Software that will be running on the Arduino microcontroller
 frontend/ - UI and UDP packet reader that will send singals to the Arduino controller.
         simulation.py - Sends UDP packets to port 5125 of simulated data
         navpacket.py - Reading the navpackets sent from the flight.
-        frontend.py - Tkinter-based GUI for sending signals to microcontroller
-        controller.py - Contains the protocols and thread-safe handling for interfacing with the controller
+        frontend.py - Tkinter-based GUI
+        controller.py - Contains the protocols and thread-safe handling for interfacing with the microcontroller.
 ```
 
 ## Documentation
