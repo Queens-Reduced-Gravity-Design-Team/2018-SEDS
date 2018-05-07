@@ -90,7 +90,12 @@ def unpackNavPacket(data):
         return None
 
 
-def UDP_Listener(callback, UDP_ListenerEvent):
+def UDP_Listener(
+        uiEventQueue,
+        uiCallback,
+        controllerEventQueue,
+        controllerCallback,
+        UDP_ListenerEvent):
     """
     Listens to UDP data and prints the corresponding NavPacket
     This code is blocking, so it should be run on a separate thread.
@@ -105,6 +110,8 @@ def UDP_Listener(callback, UDP_ListenerEvent):
     sock.settimeout(TIMEOUT_SECONDS)  # Time out sockets after some time
     bytesToRead = struct.calcsize(FMT_STRING)
 
+    timeSinceUIUpdate = time.time()
+    uiUpdatePeriod = 0.5
     while UDP_ListenerEvent.is_set():
         # Since sock.recvfrom is blocking by default, the thread running
         # this method may never terminate is the Event is cleared. Therefore
@@ -115,10 +122,15 @@ def UDP_Listener(callback, UDP_ListenerEvent):
             navpacket = unpackNavPacket(data)
 
             if navpacket is not None:
-                callback(navpacket)
+                currentTime = time.time()
+                if currentTime - timeSinceUIUpdate > uiUpdatePeriod:
+                    uiEventQueue.put((navpacket, uiCallback), block=False)
+                    timeSinceUIUpdate = currentTime
 
+                controllerEventQueue.put((navpacket, controllerCallback),
+                                         block=False)
         except socket.timeout:
             pass
-
+        
     logging.info("Recieved UDP_Listener close event.")
     UDP_ListenerEvent.set()
