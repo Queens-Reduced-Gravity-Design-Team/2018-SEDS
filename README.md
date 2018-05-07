@@ -54,7 +54,8 @@ the write() function should be called handleNavPackets.
 
 ### UI
 The UI can be found in the `frontend/frontend.py` file. It should automatically update based on the states found in controller.py.
-Note: the UI is currently polled to check for update requests from UDP listener.
+Note: the UI is currently polled to check for update requests from UDP listener. For performance reasons, the UI will only be updated
+every 0.5 seconds from navpackets. However, the ```handleNavepackets``` method will be called for each navpacket, regardless of the UI.
 
 #### Threads
 The frontend runs on four separate threads, a serial listener, UDP listener, controller event loop
