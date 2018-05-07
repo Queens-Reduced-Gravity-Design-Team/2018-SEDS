@@ -73,7 +73,8 @@ class Controller:
         while ControllerEventLoop_ListenerEvent.is_set():
             try:
                 data, callback = \
-                    self.controllerEventQueue.get(timeout=self.EVENT_LOOP_TIMEOUT)
+                    self.controllerEventQueue.get(
+                        timeout=self.EVENT_LOOP_TIMEOUT)
                 callback(data)
             except queue.Empty:
                 continue
