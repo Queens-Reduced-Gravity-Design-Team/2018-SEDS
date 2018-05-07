@@ -26,6 +26,7 @@ class Controller:
         self.currentPort = None
         self.isAutomatic = False
         self.controllerEventQueue = queue.Queue()
+        self.EVENT_LOOP_TIMEOUT = 1  # Seconds
 
     def getAvailablePorts(self):
         """
@@ -70,8 +71,12 @@ class Controller:
     def eventLoop(self, ControllerEventLoop_ListenerEvent):
         logging.info("Begin Serial Event loop")
         while ControllerEventLoop_ListenerEvent.is_set():
-            data, callback = self.controllerEventQueue.get(block=True)
-            callback(data)
+            try:
+                data, callback = \
+                    self.controllerEventQueue.get(timeout=self.EVENT_LOOP_TIMEOUT)
+                callback(data)
+            except queue.Empty:
+                continue
 
         logging.info("Recieved ControllerEventLoop close event.")
         ControllerEventLoop_ListenerEvent.set()
