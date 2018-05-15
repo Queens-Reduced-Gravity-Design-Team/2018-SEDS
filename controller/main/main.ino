@@ -40,8 +40,16 @@ void listenToFrontend()
     State* newState;
     char stateBuffer[4];
     stateBuffer[0] = Serial.read();
+
+    // After the first byte is read, block until all remaining bytes are
+    // read.
+    while (!Serial.read());
     stateBuffer[1] = Serial.read();
+
+    while (!Serial.read());
     stateBuffer[2] = Serial.read();
+
+    while (!Serial.read());
     stateBuffer[3] = Serial.read();
     newState = (State*)(&stateBuffer);
     
