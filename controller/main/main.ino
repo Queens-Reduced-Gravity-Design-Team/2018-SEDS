@@ -24,6 +24,9 @@ const State LAST_STATE = TEST_LED_OFF;
 // The current state of the arduino.
 State currentState = DO_NOTHING;
 
+unsigned long lastSerialWriteTimestamp = millis();
+const unsigned long serialWritePeriod = 500; //  ms
+
 void setup()
 {
   //
@@ -63,6 +66,13 @@ void listenToFrontend()
 
 void sendMessageToFrontend()
 {
+  unsigned long currentTime = millis();
+
+  if (currentTime - lastSerialWriteTimestamp < serialWritePeriod)
+  {
+    return;
+  }
+  
   // Since Serial.write sends one byte at a time if it's not a string,
   // the current state must be sent in 4 steps.
   Serial.write((unsigned char*)&currentState, sizeof(State));
@@ -71,6 +81,9 @@ void sendMessageToFrontend()
   // NOTE: The serial protocol requires that all communications between
   // the controller to the frontend be newline terminated. 
   Serial.write('\n');
+
+  // Update lastSerialWriteTimestamp, otherwise
+  lastSerialWriteTimestamp = currentTime;
 }
 
 void loop()

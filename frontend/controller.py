@@ -107,7 +107,7 @@ class Controller:
 
     def unpackSerialOutput(self, line):
         """ Unpacks the serial output recieved from the arduino """
-        return struct.unpack("<i", line)
+        return struct.unpack("<ic", line)
 
     def handleNavpackets(self, navPacket):
         """
@@ -128,7 +128,6 @@ class Controller:
         if not self.isAutomatic:
             return
 
-        # Just send a dummy "Do Nothing signal" when a serial output is received.
-        self.write(0)
+        logging.debug("Recieved from microcontroller: {}".format(output))
 
         return
