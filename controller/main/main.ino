@@ -49,13 +49,13 @@ void listenToFrontend()
     // After the first byte is read, block until all remaining bytes are
     // read.
     while (!Serial.available());
-    newState |= ((unsigned char)Serial.read()) << 4;  // LHS: kl mn 00 00 RHS: 00 mn 00 00
+    newState |= ((unsigned char)Serial.read()) << 8;  // LHS: kl mn 00 00 RHS: 00 mn 00 00
 
     while (!Serial.available());
-    newState |= ((unsigned char)Serial.read()) << 8;  // LHS: kl mn op 00 RHS: 00 00 op 00
+    newState |= ((unsigned char)Serial.read()) << 16;  // LHS: kl mn op 00 RHS: 00 00 op 00
 
     while (!Serial.available());
-    newState |= ((unsigned char)Serial.read()) << 12; // LHS: kl mn op qr RHS: 00 00 00 qr
+    newState |= ((unsigned char)Serial.read()) << 24; // LHS: kl mn op qr RHS: 00 00 00 qr
     
     if (FIRST_STATE <= (State)newState && (State)newState <= LAST_STATE)
     {
